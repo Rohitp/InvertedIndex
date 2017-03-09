@@ -152,7 +152,7 @@ def inverseDocmentfrequency(data):
         idf = math.log(totalCount / cnt)
         result[word] = idf
 
-    print result
+    print(result)
                 
             
     
