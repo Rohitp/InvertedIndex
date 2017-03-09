@@ -1,6 +1,6 @@
 from flask import Flask, request, render_template, jsonify
 from flask_cors import CORS, cross_origin
-from processText import process
+from processText import process, processSearch
 import sys 
 
 app = Flask(__name__)
@@ -10,19 +10,19 @@ app.config['CORS_HEADERS'] = 'Content-Type'
 
 @app.route("/")
 @app.route("/index")
-@app.route("/index/<int:id>/<string:name>")
 def greet(id=None, name = "Rohit"):
-    return "Hello World "+str(id)+name
+    return render_template("welcome.html")
 
 @app.route("/search")
 def search():
-    return render_template("results.html", query=request.args.get("q"))
+    searchResult = processSearch(request.args.get("q"))
+    return render_template("results.html", searchResult=searchResult)
 
 @app.route("/insert",  methods = ['POST'])
 @cross_origin()
 def insert():
     data = request.form.to_dict();
     pos = process(data)
-    return jsonify(pos)
+    return jsonify({"code": 1, "message": "INSERTED"})
 
 app.run(debug=True)

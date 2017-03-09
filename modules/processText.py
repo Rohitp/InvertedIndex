@@ -7,21 +7,19 @@ from pathlib import Path
 from collections import defaultdict
 import pickle, json
 
-# Saving as dat file. Habit from C days
-FILE_PATH = "savedata.dat"
-INDEX_PATH = "index.dat"
+FILE_PATH = "savedata.json"
+INDEX_PATH = "index.json"
 
 def process(data):
-        
     hashKey = storeData(data)
     returnedIndex = createIndex(data, hashKey)
     return returnedIndex
-    # return stemmedTaggedWords
 
 
-# TODO: Remove punctuation
+#  Handles the stemming and cleaning
 def procesText(textstring):
-    wordlist = textstring.strip().lower().split()
+    strippedString = "".join(c for c in textstring if c not in ('!','.',',','?'))
+    wordlist = strippedString.strip().lower().split()
 
     # Stem the words 
     # Then use a part of speech tagger
@@ -33,22 +31,31 @@ def procesText(textstring):
     stemmedTaggedWords = FreqDist([porterStemmer.stem(word) for word in wordlist if word not in stopwords.words('english')])
     return stemmedTaggedWords
 
+# creates the inverted index
 def createIndex(data, hashkey):
     
+    # indexData = defaultdict(lambda: defaultdict(dict))didn't work. Must find out why
     indexData = readDataFromFile(INDEX_PATH)
-    if(not bool(indexData)):
-        print("no data")
-        indexData = defaultdict(lambda: defaultdict(dict))
+    
     
     for k, v in data.items():
         if(isinstance(v, str)):
             stemmedTaggedWords = procesText(v)
             for key, value in stemmedTaggedWords.items():
-                indexData[key][k][hashkey] = value
+                if key in indexData:
+                    if k in indexData[key]:
+                        indexData[key][k][hashkey] = value
+                    else:
+                        indexData[key][k] = {}
+                        indexData[key][k][hashkey] = value
+                else:
+                    indexData[key] = {}
+                    indexData[key][k] = {}
+                    indexData[key][k][hashkey] = value
 
     
-    with open(INDEX_PATH, "wb+") as indexFile:
-        pickle.dump(indexData, indexFile)
+    with open(INDEX_PATH, "w") as indexFile:
+        json.dump(indexData, indexFile)
 
 
     return indexData 
@@ -58,9 +65,9 @@ def readDataFromFile(path):
     storageFile = Path(path)
     dataFromFile = {}
     if storageFile.is_file():
-        with open(path, 'rb') as file:
+        with open(path, 'r') as file:
             try:
-                dataFromFile = pickle.load(file)
+                dataFromFile = json.load(file)
             except:
                 dataFromFile = {}
             
@@ -74,13 +81,78 @@ def readDataFromFile(path):
 
 def storeData(data):
     dataFromFile = readDataFromFile(FILE_PATH)
-    hashKey = id(data)
+    hashKey = str(id(data))
     dataFromFile[hashKey] = data
-    # print(dataFromFile)
-    with open(FILE_PATH, 'wb+') as file:
-        pickle.dump(dataFromFile, file)
+    with open(FILE_PATH, 'w') as file:
+        json.dump(dataFromFile, file)
 
     file.close()
 
     return hashKey;
+
+
+def processSearch(searchString):
+    indexDataFromFile = readDataFromFile(INDEX_PATH)
+    searchString = searchString.strip().lower().split()
+    searchOn = ""
+    avoid = ""
+    for i in searchString:
+        if i.startswith("on:"):
+            searchOn = i[3:]
+            searchString.remove(i)
+        if i.startswith("not:"):
+            avoid = i[4:]
+            searchString.remove(i)
+        
+    porterStemmer = PorterStemmer()
+    stemmedWords = [porterStemmer.stem(word) for word in searchString if word not in stopwords.words('english')]
+    files = {}
+    result = []
+    for i in stemmedWords:
+        if i in indexDataFromFile:
+            length = 0;
+            for metaTitle, metaDict in indexDataFromFile[i].items():
+                if searchOn != "" and metaTitle != searchOn:
+                    continue
+                if avoid != "" and metaTitle == avoid:
+                    continue
+                for hashval, num in indexDataFromFile[i][metaTitle].items():
+                    if hashval in files:
+                        files[hashval] += num
+                    else:
+                        files[hashval] = num
+
+    
+    if (bool(files)):
+        dataFromFile = readDataFromFile(FILE_PATH)
+        for hashval, num in files.items():
+            dataFromFile[hashval]["weight"] = num
+            result.append(dataFromFile[hashval]) 
+
+        result = sorted(result, key=lambda k: k['weight'], reverse=True)
+        print(result)
+        return result
+
+    return {"code": -1, "message": "NO_RESULTS_FOUND"}
+
+
+# incomplete. unused
+#  formula from here
+#  http://www.tfidf.com/
+def inverseDocmentfrequency(data):
+    # Not using lexical diversity 
+    # a very useful parameter to look into to determine text corpus importance
+    lexicalDiversity = len(set(data)) / len(data)
+    result = {}
+    totalCount = len(data)
+    words = list(set([word for item in contents for word in contents[item].split()]))
+
+    for i, word in enumerate(words):
+        cnt = sum([1 for item in contents if word in contents[item]])
+        idf = math.log(totalCount / cnt)
+        result[word] = idf
+
+    print result
+                
+            
     

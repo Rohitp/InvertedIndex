@@ -1,7 +1,14 @@
 <html>
 <head>
+    <script type = "text/javascript">
+    var result = '{{searchResult}}';
+    // console.log(JSON.parse(result));
+    console.log(result);
+    </script>
 </head>
 <body>
-    <p> Query is {{query}}</p>
+    {% for result in searchResult %}
+    <p> Query is {{result}}</p>
+    {% endfor %}
 </body>
 </html>
