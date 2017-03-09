@@ -1,0 +1,19 @@
+<html>
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+</head>
+<body>
+</body>
+<script type = "text/javascript">
+
+    function handleResult(data) {
+        console.log(data);
+    }
+
+    var data = {
+        title: "B",
+        content: "sHe was not great at doing what she wanted to do. The world was a great mess. And she knew it. The greatest plesure she got was from wallowing in her own misery"
+    };
+    Promise.resolve($.post("http://localhost:5000/insert", data)).then(handleResult);
+</script>
+</html>
